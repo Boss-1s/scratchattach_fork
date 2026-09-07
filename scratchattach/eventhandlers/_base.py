@@ -4,7 +4,7 @@ import json
 import time
 import ssl
 from abc import ABC, abstractmethod
-from typing import Optional, Any
+from typing import Optional, Any, TYPE_CHECKING
 from collections import defaultdict
 from threading import Thread, Event
 from collections.abc import Callable
@@ -12,7 +12,8 @@ import traceback
 
 from SimpleWebSocketServer import WebSocket
 
-import scratchattach.cloud._base as cloud_base
+if TYPE_CHECKING:
+    import scratchattach.cloud._base as cloud_base
 from scratchattach.utils.requests import requests
 from scratchattach.utils import exceptions
 
@@ -158,7 +159,7 @@ class BaseCloudServer(BaseEventHandler):
     "List of blocked IP addresses."
     sync_players: bool
     log_var_sets: bool
-    linked_clouds: dict[str, cloud_base.CloudServerAdapter]
+    linked_clouds: dict[str, "cloud_base.CloudServerAdapter"]
 
     def __init__(
         self,
@@ -341,9 +342,10 @@ class BaseCloudServer(BaseEventHandler):
         except Exception as e:
             raise exceptions.WebsocketServerError(str(e))
 
-    def get_project_cloud(self, project_id: Any) -> cloud_base.CloudServerAdapter:
+    def get_project_cloud(self, project_id: Any) -> "cloud_base.CloudServerAdapter":
         project_id = str(project_id)
         if project_id not in self.linked_clouds:
+            from scratchattach.cloud import _base as cloud_base
             self.linked_clouds[project_id] = cloud_base.CloudServerAdapter(self, project_id)
         return self.linked_clouds[project_id]
 
