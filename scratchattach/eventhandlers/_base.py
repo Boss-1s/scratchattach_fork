@@ -12,6 +12,7 @@ import traceback
 
 from SimpleWebSocketServer import WebSocket
 
+import scratchattach.cloud._base as sa
 from scratchattach.utils.requests import requests
 from scratchattach.utils import exceptions
 
@@ -142,9 +143,9 @@ class BaseCloudServer(BaseEventHandler):
     port: int
     "Port to bind the server to."
     tw_clients: dict[tuple[str, int], dict[str, Any]]
-    "Dictionary containing client information."
+    "Dictionary containing information on connected clients."
     tw_variables: dict[str, dict[str, Any]]
-    "Dictionary containing existing cloud variables."
+    "Dictionary containing states and data for existing cloud variables."
     allow_non_numeric: bool
     "Whether or not non-numeric characters are allowed in cloud variable values."
     whitelisted_projects: set[str] | None
@@ -163,6 +164,7 @@ class BaseCloudServer(BaseEventHandler):
         hostname: str,
         *,
         port: int,
+        linked_cloud: sa.AnyCloud[str|int] | None = None,
         length_limit: int | None = None,
         allow_non_numeric: bool = True,
         whitelisted_projects: list[Any] | None = None,
@@ -193,6 +195,8 @@ class BaseCloudServer(BaseEventHandler):
         self.blocked_ips = blocked_ips
         self.sync_players = sync_players
         self.log_var_sets = log_var_sets
+
+        self.linked_cloud = linked_cloud if linked_cloud else sa.DummyCloud()
 
     def check_for_ip_ban(self, client):
         if (
@@ -313,6 +317,7 @@ class BaseCloudServer(BaseEventHandler):
                             "project_id": project_id,
                             "name": var_name,
                             "value": value,
+                            "server": "scratchattach/3",
                             "timestamp": time.time() * 1000,
                             "user": user,
                         }
