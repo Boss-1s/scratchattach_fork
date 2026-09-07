@@ -13,9 +13,9 @@ from threading import Lock
 from collections.abc import Iterator
 
 from scratchattach.cloud import cloud as cloud_module
-from scratchattach.eventhandlers import cloud_server
 
 if TYPE_CHECKING:
+    from scratchattach.eventhandlers import cloud_server
     from _typeshed import SupportsRead
 else:
     T = TypeVar("T")
@@ -629,12 +629,12 @@ def _get_cloud_var_initial_data_or_none(project_id: Union[str, int]) -> Optional
 
 
 class CloudServerAdapter(AnyCloud[str | int | float]):
-    server: cloud_server.BaseCloudServer
+    server: "cloud_server.BaseCloudServer"
     disconnected: threading.Event
     project_id: str | int
     connected_event_stream_queues: dict[int, queue.Queue[dict[str, Any]]]
 
-    def __init__(self, server: cloud_server.BaseCloudServer, project_id: str | int):
+    def __init__(self, server: "cloud_server.BaseCloudServer", project_id: str | int):
         self.server = server
         self.disconnected = threading.Event()
         self.project_id = project_id
