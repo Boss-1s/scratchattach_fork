@@ -65,15 +65,12 @@ class TwCloudSocket(WebSocket):
             "name": data["name"],
             "value": data["value"],
             # TODO: Add a cloud to the activity dict (possibly some kind of adapter)
-            "cloud": self.server.linked_cloud,
+            "cloud": self.server.get_project_cloud(data["project_id"]),
         }
         # raise event
         _a = cloud_activity.CloudActivity(
             username=data["user"],
-            var=data["name"],
-            value=data["value"],
-            timestamp=time.time() * 1000,
-            cloud=self.server.linked_cloud
+            timestamp=time.time() * 1000
         )
         _a._update_from_dict(send_to_clients)
         self.server.call_event("on_set", [_a, self])
@@ -224,7 +221,6 @@ class TwCloudServer(BaseCloudServer, SimpleWebSocketServer):
         blocked_ips: list[str] | None = None,
         sync_players: bool = True,
         log_var_sets: bool = True,
-        link_cloud: AnyCloud[str|int] | None = None,
     ):
         if blocked_ips is None:
             blocked_ips = []
@@ -242,7 +238,6 @@ class TwCloudServer(BaseCloudServer, SimpleWebSocketServer):
             blocked_ips=blocked_ips,
             sync_players=sync_players,
             log_var_sets=log_var_sets,
-            linked_cloud=link_cloud if link_cloud else DummyCloud(),
         )
 
 
@@ -264,7 +259,6 @@ class TwSSLCloudServer(BaseCloudServer, SimpleSSLWebSocketServer):
         blocked_ips: list[str] | None = None,
         sync_players: bool = True,
         log_var_sets: bool = True,
-        link_cloud: AnyCloud[str|int] | None = None,
     ):
         SimpleSSLWebSocketServer.__init__(
             self,
@@ -288,7 +282,6 @@ class TwSSLCloudServer(BaseCloudServer, SimpleSSLWebSocketServer):
             blocked_ips=blocked_ips,
             sync_players=sync_players,
             log_var_sets=log_var_sets,
-            linked_cloud=link_cloud if link_cloud else DummyCloud()
         )
 
     def _updater(self):
@@ -311,7 +304,6 @@ def init_cloud_server(
     blocked_ips: list[str] | None = None,
     sync_players: bool = True,
     log_var_sets: bool = True,
-    link_cloud: AnyCloud[str|int] | None = None,
 ):
     """
     Inits a websocket server which can be used with TurboWarp's ?cloud_host URL parameter.
@@ -332,7 +324,6 @@ def init_cloud_server(
         blocked_ips=blocked_ips,
         sync_players=sync_players,
         log_var_sets=log_var_sets,
-        link_cloud=link_cloud
     )
 
 
@@ -351,7 +342,6 @@ def init_ssl_cloud_server(
     blocked_ips: list[str] | None = None,
     sync_players: bool = True,
     log_var_sets: bool = True,
-    link_cloud: AnyCloud[str|int] | None = None,
 ) -> TwSSLCloudServer:
     """
     Inits a websocket server which can be used with TurboWarp's ?cloud_host URL parameter.
@@ -379,5 +369,4 @@ def init_ssl_cloud_server(
         blocked_ips=blocked_ips,
         sync_players=sync_players,
         log_var_sets=log_var_sets,
-        link_cloud=link_cloud
     )

@@ -12,7 +12,7 @@ import traceback
 
 from SimpleWebSocketServer import WebSocket
 
-import scratchattach.cloud._base as sa
+import scratchattach.cloud._base as cloud_base
 from scratchattach.utils.requests import requests
 from scratchattach.utils import exceptions
 
@@ -158,13 +158,13 @@ class BaseCloudServer(BaseEventHandler):
     "List of blocked IP addresses."
     sync_players: bool
     log_var_sets: bool
+    linked_clouds: dict[str, cloud_base.CloudServerAdapter]
 
     def __init__(
         self,
         hostname: str,
         *,
         port: int,
-        linked_cloud: sa.AnyCloud[str|int] | None = None,
         length_limit: int | None = None,
         allow_non_numeric: bool = True,
         whitelisted_projects: list[Any] | None = None,
@@ -196,7 +196,7 @@ class BaseCloudServer(BaseEventHandler):
         self.sync_players = sync_players
         self.log_var_sets = log_var_sets
 
-        self.linked_cloud = linked_cloud if linked_cloud else sa.DummyCloud()
+        self.linked_clouds = {}
 
     def check_for_ip_ban(self, client):
         if (
@@ -267,25 +267,23 @@ class BaseCloudServer(BaseEventHandler):
         if not no_prefix:
             data = {"☁ " + key.removeprefix("☁ "): value for key, value in data.items()}
         self.tw_variables[project_id].update(data)
+        packets = [
+            {
+                "method": "set",
+                "project_id": project_id,
+                "name": varname,
+                "value": data[varname],
+                "server": "scratchattach/3",
+                "timestamp": time.time() * 1000,
+                "user": user,
+            }
+            for varname in data
+        ]
+        packets_string = "\n".join(json.dumps(packet) for packet in packets)
         for client in (self.tw_clients[ip]["client"] for ip in self.active_user_ips(project_id)):
-            client.sendMessage(
-                "\n".join(
-                    [
-                        json.dumps(
-                            {
-                                "method": "set",
-                                "project_id": project_id,
-                                "name": varname,
-                                "value": data[varname],
-                                "server": "scratchattach/3",
-                                "timestamp": time.time() * 1000,
-                                "user": user,
-                            }
-                        )
-                        for varname in data
-                    ]
-                )
-            )
+            client.sendMessage(packets_string)
+        for packet in packets:
+            self.call_event("outgoing_packet", [packet])
 
     def set_var(
         self,
@@ -304,25 +302,23 @@ class BaseCloudServer(BaseEventHandler):
             self.tw_variables[project_id] = {}
         self.tw_variables[project_id][var_name] = value
 
+        packet = {
+            "method": "set",
+            "project_id": project_id,
+            "name": var_name,
+            "value": value,
+            "server": "scratchattach/3",
+            "timestamp": time.time() * 1000,
+            "user": user,
+        }
         if self.sync_players is True:
             for client in (
                 self.tw_clients[ip]["client"] for ip in self.active_user_ips(project_id)
             ):
                 if client == skip_broadcast_for:
                     continue
-                client.sendMessage(
-                    json.dumps(
-                        {
-                            "method": "set",
-                            "project_id": project_id,
-                            "name": var_name,
-                            "value": value,
-                            "server": "scratchattach/3",
-                            "timestamp": time.time() * 1000,
-                            "user": user,
-                        }
-                    )
-                )
+                client.sendMessage(json.dumps(packet))
+        self.call_event("outgoing_packet", [packet])
 
     def _check_value(self, value):
         # Checks if a received cloud value satisfies the server's constraints
@@ -344,6 +340,12 @@ class BaseCloudServer(BaseEventHandler):
                 self.serveonce()
         except Exception as e:
             raise exceptions.WebsocketServerError(str(e))
+
+    def get_project_cloud(self, project_id: Any) -> cloud_base.CloudServerAdapter:
+        project_id = str(project_id)
+        if project_id not in self.linked_clouds:
+            self.linked_clouds[project_id] = cloud_base.CloudServerAdapter(self, project_id)
+        return self.linked_clouds[project_id]
 
     def pause(self):
         self.running = False
