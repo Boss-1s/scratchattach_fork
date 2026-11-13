@@ -643,7 +643,7 @@ class CloudServerAdapter(AnyCloud[str | int | float]):
         self.disconnected = threading.Event()
         self.project_id = project_id
         self.connected_event_stream_queues = {}
-        
+
         @self.server.event
         def on_outgoing_packet(event):
             for listener in self.connected_event_stream_queues.values():
@@ -671,7 +671,7 @@ class CloudServerAdapter(AnyCloud[str | int | float]):
 
         Args:
             variable (str): The name of the cloud variable that should be set (provided without the cloud emoji)
-            value (Any): The value the cloud variable should be set to
+            value (str | int | float): The value the cloud variable should be set to
 
         Kwargs:
             max_retries (int) : Maximum number of times to retry setting the var if setting fails before raising an exception
@@ -684,22 +684,12 @@ class CloudServerAdapter(AnyCloud[str | int | float]):
             value,
         )
 
-    def set_vars(
-        self,
-        var_value_dict: dict[str, str | int | float],
-        *,
-        intelligent_waits: bool = True,
-        max_retries: int = 2,
-    ):
+    def set_vars(self, var_value_dict: dict[str, str | int | float]):
         """
         Sets multiple cloud variables at once (works for an unlimited amount of variables).
 
         Args:
             var_value_dict (dict): variable:value dictionary with the variables / values to set. The dict should like this: {"var1":"value1", "var2":"value2", ...}
-
-        Kwargs:
-            intelligent_waits (boolean): When enabled, the method will automatically decide how long to wait before performing this cloud variable set, to make sure no rate limits are triggered
-            max_retries (int) : Maximum number of times to retry setting the var if setting fails before raising an exception
         """
         if self.disconnected.is_set():
             return

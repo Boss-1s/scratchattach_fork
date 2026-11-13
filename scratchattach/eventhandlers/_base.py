@@ -226,7 +226,7 @@ class BaseCloudServer(BaseEventHandler):
                 only_active[project_id] = self.tw_variables[project_id]
         return only_active
 
-    def active_user_names(self, project_id):
+    def active_user_names(self, project_id: Any):
         return [self.tw_clients[user]["username"] for user in self.active_user_ips(project_id)]
 
     def active_user_ips(self, project_id: Any):
@@ -244,27 +244,30 @@ class BaseCloudServer(BaseEventHandler):
         project_id = str(project_id)
         return self.tw_variables.get(project_id, {})
 
-    def get_var(self, project_id: Any, var_name: str, *, no_prefix: bool = False):
+    def get_var(self,
+                project_id: Any,
+                var_name: str,
+                *,
+                no_prefix: bool = False):
         project_id = str(project_id)
         if not no_prefix:
             var_name = "☁ " + var_name.removeprefix("☁ ")
-        if project_id in self.tw_variables:
-            if var_name in self.tw_variables[project_id]:
-                return self.tw_variables[project_id][var_name]
-            else:
-                return None
-        else:
-            return None
+        return self.tw_variables.get(project_id, {}).get(var_name, {})
 
     def set_global_vars(
         self,
         data: dict[str, dict[str, Any]],
+        *,
         no_prefix: bool = False,
     ):
         for project_id, project_data in data.items():
             self.set_project_vars(project_id, project_data, no_prefix=no_prefix)
 
-    def _distribute_to_clients(self, project_id, json_string, *, skip_broadcast_for=None):
+    def _distribute_to_clients(self,
+                               project_id: Any,
+                               json_string: str,
+                               *,
+                               skip_broadcast_for=None):
         for client in [self.tw_clients[ip]["client"] for ip in self.active_user_ips(project_id)]:
             if client == skip_broadcast_for:
                 continue
